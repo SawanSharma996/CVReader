@@ -5,6 +5,19 @@ import pdfplumber
 import re
 import pandas as pd
 from io import BytesIO
+import spacy
+
+def extract_name(resume_text):
+    nlp = spacy.load("en_core_web_sm")
+    doc = nlp(resume_text)
+
+    # Find the first named entity of type 'PERSON'
+    for entity in doc.ents:
+        if entity.label_ == 'PERSON':
+            return entity.text
+
+    return None
+
 
 def extract_text_from_docx(file):
     doc = docx.Document(file)
@@ -24,6 +37,13 @@ def find_email_and_phone(text):
     phones = re.findall(phone_pattern, text)
     return emails, phones
 
+def find_email_and_phone(text):
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    phone_pattern = r'\b\d{3}[-.]?\d{2}\s?\d{2}[-.]?\d{3}\b'  
+    emails = re.findall(email_pattern, text)
+    phones = re.findall(phone_pattern, text)
+    return emails, phones
+
 def process_files_in_zip(zip_path):
     data = []
     with zipfile.ZipFile(zip_path, 'r') as z:
@@ -35,11 +55,12 @@ def process_files_in_zip(zip_path):
                     elif file_info.filename.endswith('.pdf'):
                         text = extract_text_from_pdf(BytesIO(file.read()))
                     emails, phones = find_email_and_phone(text)
+                    Names = extract_name(text)
                     data.append({
                         "Filename": file_info.filename,
                         "Emails": emails,
                         "Phones": phones,
-                        
+                        "Names" : Names,
                     })
     return data
 
@@ -48,9 +69,8 @@ def save_to_excel(data):
     df.to_excel('output.xlsx', index=False)
 
 
-zip_path = '/Users/sawansharma/Desktop/code/CVReader/CVReader/input.zip'
+zip_path = '/home/hitesh/CVReader/input.zip'
 data = process_files_in_zip(zip_path)
 save_to_excel(data)
 
-    
-        
+
